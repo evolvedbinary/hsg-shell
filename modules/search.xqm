@@ -123,12 +123,12 @@ declare variable $search:DISPLAY := map {
             let $placeName := ($doc//tei:placeName)[1]
             let $placeName-string := normalize-space(string-join($placeName//text()[not(./ancestor::tei:note)]))
             let $matches-to-highlight := 5
-
+            
             let $m := ft:highlight-field-matches($doc, 'hsg-fulltext')
-            let $kwic :=
+            let $kwic :=  
                 for $hit in subsequence($m//exist:match, 1, $matches-to-highlight) 
                     return kwic:get-summary($m, $hit, <config width="40"/>)/child::*
-                
+
             let $score := ft:score($doc)
             return
                 <div>
@@ -585,7 +585,7 @@ function search:load-results($node as node(), $model as map(*), $q as xs:string?
         (: if (exists($cached-query)) then
             $cached-query
         else :)
-
+           
                 let $log := console:log("search:query-section starting")
             let $query-sections-start := util:system-time()
 
@@ -801,18 +801,13 @@ declare function search:query-sections($sections as xs:string*, $query-configura
             $query-configuration?facets
         ))
 
-(: special case for querying frus due to limitations of immediately retrieving fields on large result sets :)
+(: special case for querying frus due to limitations of immediately retrieving fields on large result sets :)  
     let $frus-query-options := 
         map:merge((
             $search:ft-query-options,
+            map {"fields": ("hsg-date-min")},
             $query-configuration?facets
         ))
-
-    (: let $foo := serialize($query-options, <output:serialization-parameters xmlns:output="http://www.w3.org/2010/xslt-xquery-serialization">
-                                        <output:method>adaptive</output:method>
-                                        </output:serialization-parameters>)
-    :)
-
     return
               ( 
                 collection("/db/apps/administrative-timeline/timeline")//tei:div[ft:query(., $query-string, $query-options)],
@@ -887,11 +882,15 @@ declare function search:result-summary($node, $model) {
                             $conf?fields,
                             $conf?facets
                         ))
+   
+                    (: workaround to have fields from the 2nd ft:query available :)
+                    let $node-id := util:node-id($result)
+                    let $hit := util:node-by-id($result, $node-id)
 
-                    let $hit := $result[ft:query(., $conf?query-string, $query-options)] 
-                    return $summary($hit)
+                    return 
+                        $summary($hit[ft:query(., $conf?query-string, $query-options)] )
                 else
-                $summary($result)
+                    $summary($result)
         (: see if we've defined a custom function for this result's element name to display result summaries :)
         else if ($element-name-has-custom-function) then
             let $summary := $search:DISPLAY?(local-name($result))?summary
@@ -899,10 +898,12 @@ declare function search:result-summary($node, $model) {
                 typeswitch ($summary)
                     case function(*) return $summary($result)
                     default return
+                    (: replace with custom kwic :)
                         let $trimmed-hit := search:trim-matches(util:expand($result), $matches-to-highlight)
                         return
                             kwic:summarize($trimmed-hit, <config xmlns="" width="60"/>)/*
         else
+        (: needs to be replaced with custom kwic :)
             let $trimmed-hit := search:trim-matches(util:expand($result), $matches-to-highlight)
             return
                 kwic:summarize($trimmed-hit, <config xmlns="" width="60"/>)/*

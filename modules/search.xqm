@@ -1157,7 +1157,7 @@ function search:paginate($node as node(), $model as map(*), $start as xs:int, $p
 declare function search:sanitize-query($q as xs:string?) as xs:string? {
     (
         $q
-        => replace('/', '\\/')
+        => replace('\\?/', '\\/')
         => normalize-space()
     )[. ne '']
 };

@@ -117,8 +117,10 @@ declare function link:report-issue-body($node, $model) as xs:string {
     )[1]
     let $tab := codepoints-to-string(9)
     let $parameters as xs:string* :=
-        for $param in try {request:get-parameter-names()} catch err:XPDY0002 {()}
-        return ($tab || $param || ':  ' || request:get-parameter($param, ()))
+        for $param in try {request:get-parameter-names()} catch * {()}
+        let $param-values := try {request:get-parameter($param, ())} catch * {''}
+        for $value in $param-values
+            return ($tab || $param || ':  ' || $value)
     return (
         "",
         "_________________________________________________________",

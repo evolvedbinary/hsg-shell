@@ -1094,7 +1094,7 @@ function search:paginate($node as node(), $model as map(*), $start as xs:int, $p
             let $params :=
                 string-join(
                     (
-                        $model?query-info?q[. ne ""]          ! ("q=" || encode-for-uri(.)),
+                        $model?query-info?q[. ne ""]          ! ("q=" || search:desanitize-query(.) => encode-for-uri()),
                         $model?query-info?within[not(. = ("", "entire-site"))]   ! ('within=' || .),
                         $model?query-info?volume-id[. ne ""]  ! ("volume-id=" || .),
                         $model?query-info?start-date[. ne ""] ! ("start-date=" || .),

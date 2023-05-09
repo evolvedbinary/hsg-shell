@@ -542,7 +542,7 @@ declare
 function search:load-results($node as node(), $model as map(*), $q as xs:string?, $within as xs:string*, $volume-id as xs:string*, $start as xs:integer, $per-page as xs:integer, $start-date as xs:string?, $end-date as xs:string?, $start-time as xs:string?, $end-time as xs:string?, $sort-by as xs:string?, $order-by as xs:string?) {
     let $query-start-time := util:system-time()
     
-    let $q := normalize-space($q)[. ne ""]
+    let $q := search:sanitize-query($q)
     
     let $adjusted-sort-by :=
         (: if no query string is provided, relevance sorting is essentially random, so we'll apply date sorting to results :)
@@ -947,7 +947,7 @@ declare function search:pluralize($count as xs:integer, $singular-form as xs:str
 };
 
 declare function search:keyword-summary($node, $model) {
-    let $q := normalize-space($model?query-info?q)
+    let $q := search:desanitize-query($model?query-info?q)
     return
         if ($q ne "") then
             "for keyword “" || $q || "”"
@@ -1101,7 +1101,7 @@ function search:paginate($node as node(), $model as map(*), $start as xs:int, $p
             let $params :=
                 string-join(
                     (
-                        $model?query-info?q[. ne ""]          ! ("q=" || encode-for-uri(.)),
+                        $model?query-info?q[. ne ""]          ! ("q=" || search:desanitize-query(.) => encode-for-uri()),
                         $model?query-info?within[not(. = ("", "entire-site"))]   ! ('within=' || .),
                         $model?query-info?volume-id[. ne ""]  ! ("volume-id=" || .),
                         $model?query-info?start-date[. ne ""] ! ("start-date=" || .),
@@ -1158,4 +1158,20 @@ function search:paginate($node as node(), $model as map(*), $start as xs:int, $p
         }
     else
         ()
+};
+
+(: escape special characters, normalize-space etc in lucene queries :)
+declare function search:sanitize-query($q as xs:string?) as xs:string? {
+    (
+        $q
+        => replace('\\?/', '\\/')
+        => normalize-space()
+    )[. ne '']
+};
+
+(: un-escape special characters etc in lucene queries for presentation to the reader :)
+declare function search:desanitize-query($q as xs:string?) as xs:string? {
+    $q
+    => replace('\\/', '/')
+    => normalize-space()
 };
